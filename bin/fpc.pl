@@ -1,5 +1,37 @@
 #!/usr/bin/perl
 
+=head1 NAME
+
+fpc.pl - Utility to start/stop tunnels parsed from FoxyProxy config
+
+=head1 SYNOPSIS
+
+  # List available proxies
+  $ fpc.pl list
+
+  # Start a given proxy
+  $ fpc.pl start footun
+
+  # Restart a given proxy
+  $ fpc.pl restart footun
+
+  # Stop a given proxy
+  $ fpc.pl stop footun
+
+  # Show status of a given proxy
+  $ fpc.pl status footun
+
+  # Show usage assistance
+  $ fpc.pl help
+
+=head1 DESCRIPTION
+
+WARNING: this program contains a bunch of stuff that I once thought
+         was really cool and interesting, but now I mostly just find
+         hard to understand and maintain.  This will be addressed
+         after I complete the test suite.
+=cut
+
 use strict;
 use warnings;
 
@@ -8,13 +40,15 @@ use Perl6::Say;
 use Proc::ProcessTable;
 
 my $conf_path
-	= $ENV{'FP_CONF_PATH'};
+	= $ENV{'FPC_CONF_PATH'};
 my $command_re
 	= qr/^(ssh.*)/;
 
 my %commands = (
-	'help'    => sub { usage() },
-	'start'   => sub {
+	'help'	=> sub {
+		usage()
+	},
+	'start'	=> sub {
 		# Check that params were passed, or exit with usage message
 		params_or_usage();
 
@@ -34,7 +68,7 @@ my %commands = (
 		say 'Warning: No proxy definition found for ', join(' ', @unprocessed_params)
 			if @unprocessed_params;
 	},
-	'stop'    => sub {
+	'stop'	=> sub {
 		params_or_usage();
 
 		my $pt = (new Proc::ProcessTable)->table();
@@ -86,9 +120,9 @@ my %commands = (
 		say 'Warning: No proxy definition found for ', join(' ', @unprocessed_params)
 			if @unprocessed_params;
 	},
-	'restart' => sub { # handled elsewhere
+	'restart' => sub { # handled elsewhere, but here for inclusion in usage()
 	},
-	'list'    => sub {
+	'list'	=> sub {
 		say "Configured Proxies:";
 
 		proxy_do(sub {
@@ -127,19 +161,19 @@ my %commands = (
 	},
 );
 
-usage()
-	unless ( $ARGV[0] && grep {$_ eq $ARGV[0]} keys(%commands) );
+=begin private
+=head1 PRIVATE METHODS
 
-if ( $ARGV[0] eq 'restart' ) {
-	$commands{'stop'}->();
-	unshift(@ARGV, 'start');
-	$commands{'start'}->();
-}
-else
-{
-	$commands{$ARGV[0]}->();
-}
+=head2 proxy_do
 
+  my @unprocessed_params = proxy_do(sub {
+  	my ($proxy, $cmd) = @_;
+  	say "$proxy, $cmd";
+  });
+
+Invokes the supplied method, passing in the name of the proxy and the
+command as parsed from the FoxyProxy configuration.
+=cut
 sub proxy_do {
 	my $func = shift;
 	my $fp = get_fp_cfg();
@@ -153,6 +187,7 @@ sub proxy_do {
 	}
 
 	# From http://www.perlmonks.org/?node_id=153402
+	# TODO: relearn what this does and document it
 	my @unknown;
 	OUTER:
 	for ( @ARGV ) {
@@ -169,18 +204,16 @@ sub proxy_do {
 	return @unknown;
 }
 
+=head2 get_fp_cfg
+
+  my $fp = get_fp_cfg();
+
+Reads and parses FoxyProxy config, returning hashref.
+=cut
 sub get_fp_cfg {
 	my $fp;
+	# TODO I don't know why the fuck I did this; seems kind of showy
 	( sub { $fp ? $fp : $fp = XMLin($conf_path); } )->();
-}
-
-sub params_or_usage {
-	# Remove command name
-	shift @ARGV;
-
-	# Error if no proxies specified
-	usage()
-		if !@ARGV;
 }
 
 # From Garick
@@ -194,6 +227,27 @@ sub params_or_usage {
 #	}
 #}
 
+=head2 params_or_usage
+
+  params_or_usage();
+
+Checks that proxies have been specified in addition to a command, or dies
+displaying a usage message to stdout.
+=cut
+sub params_or_usage {
+	# Remove command name
+	shift @ARGV;
+
+	# Error if no proxies specified
+	usage() if !@ARGV;
+}
+
+=head3 usage
+
+  usage();
+
+Displays program usage information to stdout.
+=cut
 sub usage {
 	say "Usage: $0 {",
 		( join '|', keys(%commands) ),
@@ -201,3 +255,29 @@ sub usage {
 	exit;
 }
 
+=head2 main
+
+  main();
+
+Invokes main program logic.
+=cut
+sub main {
+	usage()
+		unless ( $ARGV[0] && grep {$_ eq $ARGV[0]} keys(%commands) );
+
+	# restart is the only command handled
+	# outside of the %commands hash
+	if ( $ARGV[0] eq 'restart' ) {
+		$commands{'stop'}->();
+		unshift(@ARGV, 'start');
+		$commands{'start'}->();
+	}
+	else {
+		$commands{$ARGV[0]}->();
+	}
+}
+
+main() if $0 eq __FILE__;
+
+=end private
+=cut
