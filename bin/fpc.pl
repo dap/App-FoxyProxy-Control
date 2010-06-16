@@ -32,11 +32,9 @@ WARNING: this program contains a bunch of stuff that I once thought
          after I complete the test suite.
 =cut
 
-use strict;
-use warnings;
+use Modern::Perl;
 
 use XML::Simple;
-use Perl6::Say;
 use Proc::ProcessTable;
 
 my $conf_path
