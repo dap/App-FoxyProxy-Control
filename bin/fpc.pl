@@ -32,10 +32,14 @@ WARNING: this program contains a bunch of stuff that I once thought
          after I complete the test suite.
 =cut
 
+package App::FoxyProxy::Control;
+
 use Modern::Perl;
 
 use XML::Simple;
 use Proc::ProcessTable;
+
+our $VERSION = '1.00';
 
 my $conf_path
 	= $ENV{'FPC_CONF_PATH'};
